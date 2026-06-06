@@ -77,8 +77,8 @@ const ContactSection = () => {
 
       <div className="mt-12 contact-el flex flex-col sm:flex-row gap-4">
         <a
-          href="/Salman_Makki_Resume-2.docx"
-          download="Salman_Makki_Resume-2.docx"
+          href="/My_resume.pdf"
+          download="My_resume.pdf"
           data-cursor-hover
           className="inline-flex items-center gap-3 px-8 py-4 border border-foreground text-foreground hover:bg-foreground hover:text-background transition-all duration-500 font-body text-sm tracking-[0.2em] uppercase rounded-sm"
         >
