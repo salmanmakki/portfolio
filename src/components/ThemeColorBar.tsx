@@ -125,6 +125,9 @@ const ThemeColorBar = () => {
   const defaultBackground = backgroundColors[0];
   const [activeThemeId, setActiveThemeId] = useState(defaultTheme.id);
   const [activeBackgroundId, setActiveBackgroundId] = useState(defaultBackground.id);
+  const [showThemeMenu, setShowThemeMenu] = useState(false);
+  const [showBackgroundMenu, setShowBackgroundMenu] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
   const activeTheme = useMemo(
     () => themeColors.find((theme) => theme.id === activeThemeId) ?? defaultTheme,
@@ -135,6 +138,12 @@ const ThemeColorBar = () => {
     () => backgroundColors.find((bg) => bg.id === activeBackgroundId) ?? defaultBackground,
     [activeBackgroundId]
   );
+
+  const isLightBackground = useMemo(() => {
+    const match = activeBackground.background.match(/\d+\s+\d+%\s+(\d+)%/);
+    const lightness = match ? Number(match[1]) : 0;
+    return lightness >= 75;
+  }, [activeBackground.background]);
 
   useEffect(() => {
     const storedThemeId = window.localStorage.getItem("app-theme-color");
@@ -153,6 +162,14 @@ const ThemeColorBar = () => {
   }, []);
 
   useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  useEffect(() => {
     applyTheme(activeTheme, activeBackground);
     window.localStorage.setItem("app-theme-color", activeTheme.id);
     window.localStorage.setItem("app-background-color", activeBackground.id);
@@ -160,52 +177,139 @@ const ThemeColorBar = () => {
 
   return (
     <div
-      className="fixed top-1/2 z-[60] hidden -translate-y-1/2 rounded-none border border-border bg-background/80 p-1 shadow-xl shadow-background/40 backdrop-blur-xl md:block"
-      style={{ left: "1rem", width: "2rem" }}
+      className="fixed top-1/2 z-[60] flex -translate-y-1/2 flex-col items-center gap-2"
+      style={{ left: isMobile ? "0.5rem" : "1rem", transform: "translateY(-40%)", height: isMobile ? "50vh" : "80vh" }}
       aria-label="Theme color selector"
     >
-      <div className="flex flex-col items-center gap-1">
-        {themeColors.map((theme) => {
-          const isActive = theme.id === activeThemeId;
-          return (
-            <button
-              key={theme.id}
-              type="button"
-              aria-label={`Switch theme to ${theme.label}`}
-              title={theme.label}
-              onClick={() => setActiveThemeId(theme.id)}
-              className={
-                "relative flex h-10 w-7 items-center justify-center rounded-md border transition duration-300 focus:outline-none focus:ring-2 focus:ring-white/80 " +
-                (isActive ? "border-white bg-white/10" : "border-border bg-white/10 hover:border-accent")
-              }
-              style={{ backgroundColor: theme.displayColor }}
-            >
-              {isActive ? <span className="absolute inset-0 rounded-md border-2 border-white/80" /> : null}
-            </button>
-          );
-        })}
+      {/* Upper vertical line for text/theme color */}
+      <div
+        className="relative flex-1"
+        onMouseEnter={() => !isMobile && setShowThemeMenu(true)}
+        onMouseLeave={() => !isMobile && setShowThemeMenu(false)}
+        onClick={() => isMobile && setShowThemeMenu(!showThemeMenu)}
+      >
+        {/* Invisible hover bridge to menu */}
+        {showThemeMenu && (
+          <div 
+            className="absolute top-1/2 -translate-y-1/2 pointer-events-auto"
+            style={{ left: "0px", right: "-200px", height: "100%" }}
+            onMouseEnter={() => !isMobile && setShowThemeMenu(true)}
+            onMouseLeave={() => !isMobile && setShowThemeMenu(false)}
+          />
+        )}
+        
+        <div
+          className="w-full h-full rounded-lg cursor-pointer transition-all duration-300 hover:shadow-lg"
+          style={{
+            width: "5px",
+            backgroundColor: activeTheme.displayColor,
+            borderRadius: "4px",
+          }}
+        />
+        {/* Theme color menu - appears on hover */}
+        {showThemeMenu && (
+          <div 
+            className="absolute top-1/2 -translate-y-1/2 bg-background/95 border border-border rounded-lg shadow-xl p-2 backdrop-blur-xl whitespace-nowrap z-50 pointer-events-auto"
+            style={{ left: "20px" }}
+            onMouseEnter={() => setShowThemeMenu(true)}
+            onMouseLeave={() => setShowThemeMenu(false)}
+          >
+            <div className="text-xs font-semibold text-muted-foreground mb-2 px-2">Text Color</div>
+            <div className="flex flex-col gap-1">
+              {themeColors.map((theme) => {
+                const isActive = theme.id === activeThemeId;
+                return (
+                  <button
+                    key={theme.id}
+                    type="button"
+                    aria-label={`Switch theme to ${theme.label}`}
+                    onClick={() => {
+                      setActiveThemeId(theme.id);
+                      setShowThemeMenu(false);
+                    }}
+                    className={`px-3 py-2 rounded-md text-sm transition-all duration-200 flex items-center gap-2 ${
+                      isActive
+                        ? "bg-accent text-accent-foreground"
+                        : "hover:bg-accent/20 text-foreground"
+                    }`}
+                  >
+                    <div
+                      className="w-4 h-4 rounded border border-border"
+                      style={{ backgroundColor: theme.displayColor }}
+                    />
+                    {theme.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
-      <div className="flex flex-col items-center gap-1 border-t border-border pt-2">
-        {backgroundColors.map((bg) => {
-          const isActive = bg.id === activeBackgroundId;
-          return (
-            <button
-              key={bg.id}
-              type="button"
-              aria-label={`Switch background to ${bg.label}`}
-              title={bg.label}
-              onClick={() => setActiveBackgroundId(bg.id)}
-              className={
-                "relative flex h-12 w-6 items-center justify-center rounded-md border transition duration-300 focus:outline-none focus:ring-2 focus:ring-white/80 " +
-                (isActive ? "border-white bg-white/10" : "border-border bg-white/10 hover:border-accent")
-              }
-              style={{ backgroundColor: bg.displayColor }}
-            >
-              {isActive ? <span className="absolute inset-0 rounded-md border-2 border-white/80" /> : null}
-            </button>
-          );
-        })}
+      {/* Lower vertical line for background color */}
+      <div
+        className="relative flex-1"
+        onMouseEnter={() => !isMobile && setShowBackgroundMenu(true)}
+        onMouseLeave={() => !isMobile && setShowBackgroundMenu(false)}
+        onClick={() => isMobile && setShowBackgroundMenu(!showBackgroundMenu)}
+      >
+        {/* Invisible hover bridge to menu */}
+        {showBackgroundMenu && (
+          <div 
+            className="absolute top-1/2 -translate-y-1/2 pointer-events-auto"
+            style={{ left: "0px", right: "-200px", height: "100%" }}
+            onMouseEnter={() => !isMobile && setShowBackgroundMenu(true)}
+            onMouseLeave={() => !isMobile && setShowBackgroundMenu(false)}
+          />
+        )}
+        
+        <div
+          className="w-full h-full rounded-lg cursor-pointer transition-all duration-300 hover:shadow-lg"
+          style={{
+            width: "5px",
+            backgroundColor: activeBackground.displayColor,
+            borderRadius: "4px",
+            border: `1px solid ${isLightBackground ? "black" : "white"}`,
+          }}
+        />
+        {/* Background color menu - appears on hover */}
+        {showBackgroundMenu && (
+          <div 
+            className="absolute top-1/2 -translate-y-1/2 bg-background/95 border border-border rounded-lg shadow-xl p-2 backdrop-blur-xl whitespace-nowrap z-50 pointer-events-auto"
+            style={{ left: "20px" }}
+            onMouseEnter={() => setShowBackgroundMenu(true)}
+            onMouseLeave={() => setShowBackgroundMenu(false)}
+          >
+            <div className="text-xs font-semibold text-muted-foreground mb-2 px-2">Background Color</div>
+            <div className="flex flex-col gap-1">
+              {backgroundColors.map((bg) => {
+                const isActive = bg.id === activeBackgroundId;
+                return (
+                  <button
+                    key={bg.id}
+                    type="button"
+                    aria-label={`Switch background to ${bg.label}`}
+                    onClick={() => {
+                      setActiveBackgroundId(bg.id);
+                      setShowBackgroundMenu(false);
+                    }}
+                    className={`px-3 py-2 rounded-md text-sm transition-all duration-200 flex items-center gap-2 ${
+                      isActive
+                        ? "bg-accent text-accent-foreground"
+                        : "hover:bg-accent/20 text-foreground"
+                    }`}
+                  >
+                    <div
+                      className="w-4 h-4 rounded border border-border"
+                      style={{ backgroundColor: bg.displayColor }}
+                    />
+                    {bg.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
